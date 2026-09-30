@@ -1,36 +1,23 @@
-name: Deploy Blog
+name: Deploy Blog (via ops-platform)
+
+# Trigger: any push to main, or manual dispatch.
+# The deploy logic is reusable — see eyetoolkit/ops-platform/.github/workflows/deploy-site.yml
+# This file is a thin "trigger + config" wrapper.
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 1
-
-      - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: '0.146.0'
-          extended: true
-
-      - name: Build
-        run: hugo --minify
-
-      - name: Deploy to ECS
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          ECS_HOST: ${{ secrets.ECS_HOST }}
-          ECS_USER: ${{ secrets.ECS_USER }}
-        run: |
-          echo "$DEPLOY_KEY" > deploy_key
-          chmod 600 deploy_key
-          rsync -az --delete \
-            -e "ssh -i deploy_key -o StrictHostKeyChecking=no -p 22" \
-            public/ $ECS_USER@$ECS_HOST:/opt/blog/public/
+  deploy:
+    name: Deploy blog.eyetoolkit.com
+    uses: eyetoolkit/ops-platform/.github/workflows/deploy-site.yml@main
+    with:
+      profile: eyetoolkit-blog
+      ref: main
+    secrets:
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_NOTIFY_WEBHOOK: ${{ secrets.DEPLOY_NOTIFY_WEBHOOK }}
